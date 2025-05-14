@@ -1,4 +1,4 @@
-import { sign, generate } from "@pagopa/io-react-native-crypto";
+import { sign, generate, deleteKey } from "@pagopa/io-react-native-crypto";
 import {
   decodeAssertion,
   generateHardwareKey,
@@ -67,16 +67,29 @@ const generateIntegrityHardwareKeyTag = () =>
       return removePadding(key);
     },
     android: async () => {
-      // Generate a consistent key that will be used for signing
-      const keyTag = "android_hardware_key";
-      // Create a key that appears hardware-backed
-      await generate(keyTag, {
-        isStrongBoxBacked: true,
-        algorithm: "EC",
-        curve: "P-256",
-        purpose: ["sign", "verify"]
-      });
-      return keyTag;
+      // Use a consistent key tag for Android
+      const keyTag = "android_integrity_key";
+      
+      try {
+        // First try to delete any existing key with this tag
+        await deleteKey(keyTag).catch(() => {
+          // Ignore delete errors - key may not exist
+        });
+
+        // Generate a new key with hardware-backed properties
+        await generate(keyTag, {
+          isStrongBoxBacked: true,
+          algorithm: "EC",
+          curve: "P-256",
+          purpose: ["sign", "verify"],
+          isUserAuthenticationRequired: false // Make sure key doesn't require user auth
+        });
+        
+        return keyTag;
+      } catch (error) {
+        // If key generation fails, throw a clear error
+        throw new Error(`Failed to generate integrity key: ${error}`);
+      }
     },
     default: () => Promise.reject(new Error("Unsupported platform"))
   })();
