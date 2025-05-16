@@ -138,9 +138,17 @@ const getAttestation = (challenge: string, hardwareKeyTag: string) =>
         iat: now
       };
 
-      // Create a valid JWT format
-      const headerB64 = Buffer.from(JSON.stringify(header)).toString("base64url");
-      const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+      // Create a valid JWT format using standard base64 with URL-safe characters
+      const headerB64 = Buffer.from(JSON.stringify(header))
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      const payloadB64 = Buffer.from(JSON.stringify(payload))
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
       const signature = await sign(`${headerB64}.${payloadB64}`, hardwareKeyTag);
       
       return `${headerB64}.${payloadB64}.${signature}`;
